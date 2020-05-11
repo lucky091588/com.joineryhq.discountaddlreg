@@ -17,6 +17,18 @@ function discountaddlreg_civicrm_buildForm($formName, &$form) {
     ) {
       return;
     }
+    $priceSetId = $form->getVar('_sid');
+    $priceSet = civicrm_api3('PriceSet', 'getSingle', [
+      'sequential' => 1,
+      'id' => $priceSetId,
+    ]);
+    $extends = (array) $priceSet['extends'];
+    $civiEventComponentId = CRM_Core_Component::getComponentID('CiviEvent');
+    if (!in_array($civiEventComponentId, $extends)) {
+      // This price set isn't  used for events, so nothing to do here; just return;
+      return;
+    }
+
     $form->addElement('advcheckbox', 'discountaddlreg_is_active', E::ts('Provide discounts to additional participants?'));
     $form->add(
       'text',
@@ -32,7 +44,6 @@ function discountaddlreg_civicrm_buildForm($formName, &$form) {
       CRM_Core_SelectValues::getNumericOptions(1, 9)
     );
 
-    $priceSetId = $form->getVar('_sid');
     $priceFieldOptions = ['' => '- ' . E::ts('select') . ' -'];
     $priceFieldValueGet = civicrm_api3('PriceFieldValue', 'get', [
       'sequential' => 1,
