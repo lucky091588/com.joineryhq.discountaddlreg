@@ -4,11 +4,167 @@ require_once 'discountaddlreg.civix.php';
 use CRM_Discountaddlreg_ExtensionUtil as E;
 
 /**
+ * Implements hook_civicrm_buildForm().
+ *
+ * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_buildForm/
+ */
+function discountaddlreg_civicrm_buildForm($formName, &$form) {
+  if ($formName == 'CRM_Price_Form_Option') {
+    if (
+      $form->_action != CRM_Core_Action::UPDATE
+      && $form->_action != CRM_Core_Action::ADD
+      && $form->_action != CRM_Core_Action::VIEW
+    ) {
+      return;
+    }
+    $form->addElement('advcheckbox', 'discountaddlreg_is_active', E::ts('Provide discounts to additional participants?'));
+    $form->add(
+      'text',
+      'discountaddlreg_max_discount_each',
+      E::ts('Maximum discount amount per person'),
+      ['size' => 8, 'maxlength' => 8],
+      TRUE
+    );
+    $form->addElement(
+      'select',
+      'discountaddlreg_max_persons',
+      E::ts('Maximum discounted participants'),
+      CRM_Core_SelectValues::getNumericOptions(1, 9)
+    );
+
+    $priceSetId = $form->getVar('_sid');
+    $priceFieldOptions = ['' => '- ' . E::ts('select') . ' -'];
+    $priceFieldValueGet = civicrm_api3('PriceFieldValue', 'get', [
+      'sequential' => 1,
+      'return' => ["price_field_id.label", "price_field_id.id"],
+      'amount' => 1,
+      'price_field_id.price_set_id' => $priceSetId,
+      'price_field_id.is_enter_qty' => 1,
+      'price_field_id.is_active' => 1,
+    ]);
+    foreach ($priceFieldValueGet['values'] as $value) {
+      $priceFieldOptions[$value['price_field_id.id']] = $value['price_field_id.label'];
+    }
+    $form->add(
+      'select',
+      'discountaddlreg_discount_field_id',
+      E::ts('Apply discount in this price field'),
+      $priceFieldOptions,
+      TRUE
+    );
+
+    $fieldNames = [
+      'discountaddlreg_is_active',
+      'discountaddlreg_max_discount_each',
+      'discountaddlreg_max_persons',
+      'discountaddlreg_discount_field_id',
+    ];
+    $bhfe = $form->get_template_vars('beginHookFormElements');
+    if (!$bhfe) {
+      $bhfe = [];
+    }
+    foreach ($fieldNames as $fieldName) {
+      $bhfe[] = $fieldName;
+    }
+    $form->assign('beginHookFormElements', $bhfe);
+
+    CRM_Core_Resources::singleton()->addScriptFile('com.joineryhq.discountaddlreg', 'js/CRM_Price_Form_Option.js');
+    $jsVars = [
+      'fieldNames' => $fieldNames,
+    ];
+    CRM_Core_Resources::singleton()->addVars('discountaddlreg', $jsVars);
+
+    // Set default values
+    if ($oid = $form->getVar('_oid')) {
+      $defaults = [];
+      $config = CRM_Discountaddlreg_Util::getConfig($oid);
+      foreach ($config as $configProperty => $configValue) {
+        if ($configProperty == 'max_discount_each') {
+          $configValue = CRM_Utils_Money::format($configValue, NULL, '%a');
+        }
+        $defaults["discountaddlreg_{$configProperty}"] = $configValue;
+      }
+      $form->setDefaults($defaults);
+    }
+
+    // Take specific action when form has been submitted; namely, we need to
+    // avoid 'required' for our ostensibly required fields, if is_active is off.
+    if ($form->_flagSubmitted) {
+      $submitValues = $form->exportValues();
+      if (!CRM_Utils_Array::value('discountaddlreg_is_active', $submitValues, 0)) {
+        $elementNames = array_keys($form->getVar('_elementIndex'));
+        foreach ($elementNames as $elementName) {
+          if (substr($elementName, 0, 16) == 'discountaddlreg_') {
+            $index = array_search($elementName, $form->_required);
+            if ($index !== FALSE) {
+              unset($form->_required[$index]);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_civicrm_postProcess().
+ *
+ * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_postProcess/
+ */
+function discountaddlreg_civicrm_postProcess($formName, $form) {
+  if ($formName == 'CRM_Price_Form_Option') {
+    $submitValues = $form->exportValues();
+    $priceFieldValueId = $form->getVar('_oid');
+    if (!$priceFieldValueId) {
+      // On 'create', $priceFieldValueId is not available in this scope. Rely
+      // on the fact that label must be unique.
+      $priceFieldValueGet = civicrm_api3('PriceFieldValue', 'get', [
+        'sequential' => 1,
+        'label' => CRM_Utils_Array::value('label', $submitValues),
+        'price_field_id' => $form->getVar('_fid'),
+      ]);
+      if ($priceFieldValueGet['count']) {
+        $priceFieldValueId = $priceFieldValueGet['id'];
+      }
+    }
+    if ($priceFieldValueId) {
+      // Get the existing settings record for this priceFieldValue, if any.
+      $priceFieldValueConfig = CRM_Discountaddlreg_Util::getConfig($priceFieldValueId);
+      // If existing record wasn't found, we'll create.
+      if (empty($priceFieldValueConfig)) {
+        $priceFieldValueDiscount = \Civi\Api4\PriceFieldValueDiscount::create()
+          ->addValue('price_field_value_id', $priceFieldValueId);
+      }
+      // If it was found, we'll just update it.
+      else {
+        $priceFieldValueDiscount = \Civi\Api4\PriceFieldValueDiscount::update()
+          ->addWhere('id', '=', $priceFieldValueConfig['id']);
+      }
+      // Whether create or update, add the values of our injected fields.
+      foreach ($submitValues as $submitValueName => $submitValueValue) {
+        if (substr($submitValueName, 0, 16) == 'discountaddlreg_') {
+          $paramName = substr($submitValueName, 16);
+          $priceFieldValueDiscount->addValue($paramName, $submitValueValue);
+        }
+      }
+      // Create/update settings record.
+      $priceFieldValueDiscount
+        ->execute();
+    }
+  }
+}
+
+/**
  * Implements hook_civicrm_buildAmount().
  *
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_buildAmount/
  */
 function discountaddlreg_civicrm_buildAmount($pageType, &$form, &$amounts) {
+  if ($pageType != 'event') {
+    // If this isn't event registration, do nothing and return;
+    return;
+  }
+  // Otherwise, figure out which form we're  on and act accordingly.
   $formName = $form->getVar('_name');
   if (
     (substr($formName, 0, 12) == 'Participant_')
@@ -28,10 +184,8 @@ function discountaddlreg_civicrm_buildAmount($pageType, &$form, &$amounts) {
       $availableDiscounts = CRM_Discountaddlreg_Util::getAvailableDiscountConfig($amounts);
       $selectedDiscounts = CRM_Discountaddlreg_Util::getSelectedDiscounts($availableDiscounts, $params[0]);
 
-      $discountFieldId = CRM_Utils_Array::value('discount_field_id', reset(reset($selectedDiscounts)));
-
-      $participantDiscount = CRM_Discountaddlreg_Util::calculateParticipantDiscount($amounts, $selectedDiscounts, $submitValues, $participantPositionId);
-      if ($participantDiscount) {
+      $participantDiscounts = CRM_Discountaddlreg_Util::calculateParticipantDiscounts($amounts, $selectedDiscounts, $submitValues, $participantPositionId);
+      foreach ($participantDiscounts as $discountFieldId => $participantDiscount) {
         // If any discount is to be applied, add the value of the 'discount price field'
         // to reflect that amount in the negative.
         if ($discountFieldId) {
@@ -39,18 +193,15 @@ function discountaddlreg_civicrm_buildAmount($pageType, &$form, &$amounts) {
           $form->setVar('_submitValues', $submitValues);
         }
       }
-      else {
-        unset($amounts[$discountFieldId]);
-      }
     }
     else {
       // If not 'upload' action, always hide the discount field for Participant_* forms.
-      CRM_Discountaddlreg_Util::hideDiscountField($amounts);
+      CRM_Discountaddlreg_Util::hideDiscountFields($amounts);
     }
   }
   elseif ($formName == 'Register') {
     // Always hide the discount field for primary 'Register' form.
-    CRM_Discountaddlreg_Util::hideDiscountField($amounts);
+    CRM_Discountaddlreg_Util::hideDiscountFields($amounts);
   }
 }
 

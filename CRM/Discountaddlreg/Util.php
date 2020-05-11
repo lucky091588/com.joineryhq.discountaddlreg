@@ -36,44 +36,55 @@ class CRM_Discountaddlreg_Util {
   }
 
   public static function getConfig($priceFieldValueId) {
-    if ($priceFieldValueId == 297) {
-      return [
-        'max_discount_each' => 600,
-        'max_persons' => 2,
-        'discount_field_id' => 224,
-      ];
+    $config = $priceFieldValueDiscount = \Civi\Api4\PriceFieldValueDiscount::get()
+      ->addWhere('price_field_value_id', '=', $priceFieldValueId)
+      ->execute()
+      ->first();
+    if (empty($config)) {
+      $config = [];
     }
-    else {
-      return NULL;
-    }
+    return $config;
   }
 
-  public static function calculateParticipantDiscount($amounts, $selectedDiscounts, $submitValues, $participantPositionId) {
-    // Calculate total available discounts
-    $selectedDiscountTotal = 0;
-    foreach ($selectedDiscounts as $priceSetId => $priceSetSelectedDiscounts) {
-      foreach ($priceSetSelectedDiscounts as $priceFieldId => $priceFieldDiscount) {
-        // Use this discount only if $participantPositionId is within the max_persons limit.
-        if ($participantPositionId <= CRM_Utils_Array::value('max_persons', $priceFieldDiscount, 0)) {
-          $selectedDiscountTotal += CRM_Utils_Array::value('max_discount_each', $priceFieldDiscount, 0);
-        }
-      }
-    }
-    if (!$selectedDiscountTotal) {
-      return 0;
-    }
-
+  public static function calculateParticipantDiscounts($amounts, $selectedDiscounts, $submitValues, $participantPositionId) {
     // Caculate total price based on submitted values.
     $emptyArray = [];
     CRM_Price_BAO_PriceSet::processAmount($amounts, $submitValues, $emptyArray);
-    $amount = CRM_Utils_Array::value('amount', $submitValues, 0);
+    $undiscountedAmount = CRM_Utils_Array::value('amount', $submitValues, 0);
 
-    return min($amount, $selectedDiscountTotal);
+    // Calculate total available discounts
+    $selectedDiscountTotals = [];
+    foreach ($selectedDiscounts as $priceSetId => $priceSetSelectedDiscounts) {
+      foreach ($priceSetSelectedDiscounts as $priceFieldId => $priceFieldDiscount) {
+        $discountFieldId = $priceFieldDiscount['discount_field_id'];
+        if (empty($selectedDiscountTotals[$discountFieldId])) {
+          $selectedDiscountTotals[$discountFieldId] = 0;
+        }
+        // Use this discount only if $participantPositionId is within the max_persons limit.
+        if ($participantPositionId <= CRM_Utils_Array::value('max_persons', $priceFieldDiscount, 0)) {
+          $maxDiscountEach = CRM_Utils_Array::value('max_discount_each', $priceFieldDiscount, 0);
+          if (($undiscountedAmount - $maxDiscountEach) >= 0) {
+            $selectedDiscountTotals[$discountFieldId] += $maxDiscountEach;
+            $undiscountedAmount -= $maxDiscountEach;
+          }
+          else {
+            $selectedDiscountTotals[$discountFieldId] += $undiscountedAmount;
+            $undiscountedAmount = 0;
+            break 2;
+          }
+        }
+      }
+    }
+    return $selectedDiscountTotals;
   }
 
-  public static function hideDiscountField(&$amounts) {
+  public static function hideDiscountFields(&$amounts) {
     $availableDiscounts = CRM_Discountaddlreg_Util::getAvailableDiscountConfig($amounts);
-    $discountFieldId = CRM_Utils_Array::value('discount_field_id', reset(reset($availableDiscounts)));;
-    unset($amounts[$discountFieldId]);
+    foreach ($availableDiscounts as $priceSetId => $optionConfigs) {
+      foreach ($optionConfigs as $priceFieldValueId => $optionConfig) {
+        unset($amounts[$optionConfig['discount_field_id']]);
+      }
+    }
   }
+
 }

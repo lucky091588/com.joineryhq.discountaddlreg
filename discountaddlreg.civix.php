@@ -473,5 +473,11 @@ function _discountaddlreg_civix_civicrm_alterSettingsFolders(&$metaDataFolders =
 
 function _discountaddlreg_civix_civicrm_entityTypes(&$entityTypes) {
   $entityTypes = array_merge($entityTypes, array (
+    'CRM_Discountaddlreg_DAO_PriceFieldValueDiscount' => 
+    array (
+      'name' => 'PriceFieldValueDiscount',
+      'class' => 'CRM_Discountaddlreg_DAO_PriceFieldValueDiscount',
+      'table' => 'civicrm_price_field_value_discount',
+    ),
   ));
 }
