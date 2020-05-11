@@ -84,7 +84,7 @@ function discountaddlreg_civicrm_buildForm($formName, &$form) {
       'fieldNames' => $fieldNames,
       'descriptions' => [
         'discountaddlreg_is_active' => E::ts('Should discounts be applied to Additional Participants if the primary participant selects this option?'),
-        'discountaddlreg_max_discount_each' => E::ts("A discount will be a applied to each elligible participant, up to this amount, but never exceeding that participant's total event fees"),
+        'discountaddlreg_max_discount_each' => E::ts("A discount will be a applied to each eligible participant, up to this amount, but never exceeding that participant's total event fees"),
         'discountaddlreg_max_persons' => E::ts('Discounts will be applied to this number of participants, starting with the first Additional Participant.'),
         'discountaddlreg_discount_field_id' => E::ts('Price field to be used as a line item to contain the discounts derived from this selection. Must be an active field in this price set, of type "Text / Numeric Quantity", with an amount of 1.00. This field will be hidden on all participant forms, but will be displayed on receipts, confirmation pages, and contribution records, if the participant receives a discount from this selection. Therefore, please review the label for the selected field, as it will be visible to participants in some cases.'),
       ],
