@@ -4,29 +4,6 @@ require_once 'discountaddlreg.civix.php';
 use CRM_Discountaddlreg_ExtensionUtil as E;
 
 /**
- * Implements hook_civicrm_buildForm().
- *
- * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_buildForm/
- */
-function discountaddlreg_civicrm_buildForm($formName, &$form) {
-  // TODO: complete this section.
-  return;
-
-  if (empty($form->_submitValues)) {
-    // Fixme: this is probably better done in buildForm, because  the if-conditions
-    // here are funny when we use continue and back buttons.
-    //
-    // This form has not been submitted, so this is the time to insert our notice
-    // about discounts taken at final, if any discounts were selected.
-    $availableDiscounts = CRM_Discountaddlreg_Util::getAvailableDiscountConfig($amounts);
-    $params = $form->getVar('_params');
-    $selectedDiscounts = CRM_Discountaddlreg_Util::getSelectedDiscounts($availableDiscounts, $params[0]);
-    if (!empty($selectedDiscounts)) {
-    }
-  }
-}
-
-/**
  * Implements hook_civicrm_buildAmount().
  *
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_buildAmount/
@@ -66,6 +43,14 @@ function discountaddlreg_civicrm_buildAmount($pageType, &$form, &$amounts) {
         unset($amounts[$discountFieldId]);
       }
     }
+    else {
+      // If not 'upload' action, always hide the discount field for Participant_* forms.
+      CRM_Discountaddlreg_Util::hideDiscountField($amounts);
+    }
+  }
+  elseif ($formName == 'Register') {
+    // Always hide the discount field for primary 'Register' form.
+    CRM_Discountaddlreg_Util::hideDiscountField($amounts);
   }
 }
 

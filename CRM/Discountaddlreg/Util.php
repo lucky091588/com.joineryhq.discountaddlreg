@@ -71,4 +71,9 @@ class CRM_Discountaddlreg_Util {
     return min($amount, $selectedDiscountTotal);
   }
 
+  public static function hideDiscountField(&$amounts) {
+    $availableDiscounts = CRM_Discountaddlreg_Util::getAvailableDiscountConfig($amounts);
+    $discountFieldId = CRM_Utils_Array::value('discount_field_id', reset(reset($availableDiscounts)));;
+    unset($amounts[$discountFieldId]);
+  }
 }
