@@ -38,6 +38,7 @@ class CRM_Discountaddlreg_Util {
   public static function getConfig($priceFieldValueId) {
     $config = $priceFieldValueDiscount = \Civi\Api4\PriceFieldValueDiscount::get()
       ->addWhere('price_field_value_id', '=', $priceFieldValueId)
+      ->setCheckPermissions(FALSE)
       ->execute()
       ->first();
     if (empty($config)) {
