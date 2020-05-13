@@ -26,7 +26,7 @@ class CRM_Discountaddlreg_Util {
       $priceSetKey = "price_{$priceSetId}";
       if (isset($primaryParticipantParams[$priceSetKey])) {
         foreach ($optionConfigs as $priceFieldValueId => $optionConfig) {
-          if ($primaryParticipantParams[$priceSetKey][$priceFieldValueId]) {
+          if (isset($primaryParticipantParams[$priceSetKey][$priceFieldValueId])) {
             $selectedDiscounts[$priceSetId][$priceFieldValueId] = $optionConfig;
           }
         }
