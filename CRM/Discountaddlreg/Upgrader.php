@@ -1,5 +1,6 @@
 <?php
-// use CRM_Discountaddlreg_ExtensionUtil as E;
+
+use CRM_Discountaddlreg_ExtensionUtil as E;
 
 /**
  * Collection of upgrade steps.

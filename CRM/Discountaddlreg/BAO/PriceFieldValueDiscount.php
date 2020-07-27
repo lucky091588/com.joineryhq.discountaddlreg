@@ -1,8 +1,7 @@
 <?php
 
-/**
- * use CRM_Discountaddlreg_ExtensionUtil as E;
- */
+use CRM_Discountaddlreg_ExtensionUtil as E;
+
 class CRM_Discountaddlreg_BAO_priceFieldValueDiscount extends CRM_Discountaddlreg_DAO_PriceFieldValueDiscount {
 
   /**
