@@ -146,28 +146,30 @@ function discountaddlreg_civicrm_postProcess($formName, $form) {
       }
     }
     if ($priceFieldValueId) {
-      // Get the existing settings record for this priceFieldValue, if any.
-      $priceFieldValueConfig = CRM_Discountaddlreg_Util::getConfig($priceFieldValueId);
-      // If existing record wasn't found, we'll create.
-      if (empty($priceFieldValueConfig)) {
-        $priceFieldValueDiscount = \Civi\Api4\PriceFieldValueDiscount::create()
-          ->addValue('price_field_value_id', $priceFieldValueId);
-      }
-      // If it was found, we'll just update it.
-      else {
-        $priceFieldValueDiscount = \Civi\Api4\PriceFieldValueDiscount::update()
-          ->addWhere('id', '=', $priceFieldValueConfig['id']);
-      }
-      // Whether create or update, add the values of our injected fields.
-      foreach ($submitValues as $submitValueName => $submitValueValue) {
-        if (substr($submitValueName, 0, 16) == 'discountaddlreg_') {
-          $paramName = substr($submitValueName, 16);
-          $priceFieldValueDiscount->addValue($paramName, $submitValueValue);
+      if (($submitValues['discountaddlreg_is_active'] ?? FALSE)) {
+        // Get the existing settings record for this priceFieldValue, if any.
+        $priceFieldValueConfig = CRM_Discountaddlreg_Util::getConfig($priceFieldValueId);
+        // If existing record wasn't found, we'll create.
+        if (empty($priceFieldValueConfig)) {
+          $priceFieldValueDiscount = \Civi\Api4\PriceFieldValueDiscount::create()
+            ->addValue('price_field_value_id', $priceFieldValueId);
         }
+        // If it was found, we'll just update it.
+        else {
+          $priceFieldValueDiscount = \Civi\Api4\PriceFieldValueDiscount::update()
+            ->addWhere('id', '=', $priceFieldValueConfig['id']);
+        }
+        // Whether create or update, add the values of our injected fields.
+        foreach ($submitValues as $submitValueName => $submitValueValue) {
+          if (substr($submitValueName, 0, 16) == 'discountaddlreg_') {
+            $paramName = substr($submitValueName, 16);
+            $priceFieldValueDiscount->addValue($paramName, $submitValueValue);
+          }
+        }
+        // Create/update settings record.
+        $priceFieldValueDiscount
+          ->execute();
       }
-      // Create/update settings record.
-      $priceFieldValueDiscount
-        ->execute();
     }
   }
 }
