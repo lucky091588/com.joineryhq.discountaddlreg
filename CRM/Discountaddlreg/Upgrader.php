@@ -57,17 +57,17 @@ class CRM_Discountaddlreg_Upgrader extends CRM_Discountaddlreg_Upgrader_Base {
   // }
 
   /**
-   * Example: Run a couple simple queries.
+   * 4200: Add column civicrm_price_field_value_discount.min_person
    *
-   * @return TRUE on success
+   * @return bool
+   *   TRUE on success
    * @throws Exception
    */
-  // public function upgrade_4200() {
-  //   $this->ctx->log->info('Applying update 4200');
-  //   CRM_Core_DAO::executeQuery('UPDATE foo SET bar = "whiz"');
-  //   CRM_Core_DAO::executeQuery('DELETE FROM bang WHERE willy = wonka(2)');
-  //   return TRUE;
-  // } // */
+  public function upgrade_4200() {
+    $this->ctx->log->info('Applying update 4200: Add column civicrm_price_field_value_discount.min_person');
+    CRM_Core_DAO::executeQuery("alter table civicrm_price_field_value_discount add column `min_person` int unsigned NOT NULL  DEFAULT 1 COMMENT 'First participant for whom the discount should be applied.' after max_discount_each;");
+    return TRUE;
+  }
 
   /**
    * Example: Run an external SQL script.

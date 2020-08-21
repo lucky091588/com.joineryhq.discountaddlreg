@@ -54,6 +54,15 @@
   </field>
   
   <field>
+    <name>min_person</name>
+    <title>First discounted participant</title>
+    <type>int unsigned</type>
+    <comment>First participant for whom the discount should be applied.</comment>
+    <required>true</required>
+    <default>1</default>
+  </field>
+  
+  <field>
     <name>max_persons</name>
     <title>Maximum discounted participants</title>
     <type>int unsigned</type>
