@@ -195,13 +195,31 @@ function discountaddlreg_civicrm_buildAmount($pageType, &$form, &$amounts) {
   }
   // Otherwise, figure out which form we're  on and act accordingly.
   $formName = $form->getVar('_name');
+  $participantPositionId = NULL;
   if (
     (substr($formName, 0, 12) == 'Participant_')
     && preg_match('/^Participant_([0-9]+)$/', $formName, $matches)
   ) {
-    $participantPositionId = $matches[1];
+    $participantPositionId = ($matches[1] + 1);
+  }
+  elseif ($formName == 'Register') {
+    $participantPositionId = 1;
+  }
+
+  if ($participantPositionId) {
+    // Always hide the discount fields for every participant.
+    CRM_Discountaddlreg_Util::hideDiscountFields($amounts);
     $actionName = $form->controller->_actionName[1];
-    if ($actionName == 'upload') {
+    if ($actionName == 'display') {
+      // On display, set 'amount' of discount fields to '0.00'. This is necessary
+      // because when using the 'go back' button, the discount field may have a
+      // positive value; since the field is actually on the page and only hidden by
+      // css (reference CRM_Discountaddlreg_Util::hideDiscountFields()), this
+      // situation will cause the total to display as discounted on-page,
+      // which is incorrect.
+      CRM_Discountaddlreg_Util::devalueDiscountFields($amounts);
+    }
+    elseif ($actionName == 'upload') {
       // If action is upload, it means this participant form is submitted,
       // so we can know the selected values, and therefore discount only those.
       // This way the discounts don't appear until the very end, which is really
@@ -209,28 +227,21 @@ function discountaddlreg_civicrm_buildAmount($pageType, &$form, &$amounts) {
       // selections are submitted.
       $params = $form->getVar('_params');
       $submitValues = $form->getVar('_submitValues');
-      $primaryFormKey = $params[0]['qfKey'];
+      // Unset all values for discount fields in $submitValues, to ensure no tampering.
+      CRM_Discountaddlreg_Util::stripSubmittedDiscountFieldValues($amounts, $submitValues);
+      // Determine which discounts are available and selected, and their discount value.
       $availableDiscounts = CRM_Discountaddlreg_Util::getAvailableDiscountConfig($amounts);
       $selectedDiscounts = CRM_Discountaddlreg_Util::getSelectedDiscounts($availableDiscounts, $params[0]);
-
       $participantDiscounts = CRM_Discountaddlreg_Util::calculateParticipantDiscounts($amounts, $selectedDiscounts, $submitValues, $participantPositionId);
       foreach ($participantDiscounts as $discountFieldId => $participantDiscount) {
         // If any discount is to be applied, add the value of the 'discount price field'
         // to reflect that amount in the negative.
         if ($discountFieldId) {
           $submitValues["price_{$discountFieldId}"] = (-1 * $participantDiscount);
-          $form->setVar('_submitValues', $submitValues);
         }
       }
+      $form->setVar('_submitValues', $submitValues);
     }
-    else {
-      // If not 'upload' action, always hide the discount field for Participant_* forms.
-      CRM_Discountaddlreg_Util::hideDiscountFields($amounts);
-    }
-  }
-  elseif ($formName == 'Register') {
-    // Always hide the discount field for primary 'Register' form.
-    CRM_Discountaddlreg_Util::hideDiscountFields($amounts);
   }
 }
 
