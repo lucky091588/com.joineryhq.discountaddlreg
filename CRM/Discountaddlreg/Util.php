@@ -52,7 +52,7 @@ class CRM_Discountaddlreg_Util {
     return $config;
   }
 
-  public static function calculateParticipantDiscounts($amounts, $selectedDiscounts, $submitValues, $participantPositionId) {
+  public static function calculateParticipantDiscounts($amounts, $selectedDiscounts, $submitValues, $countedParticipantPositionId) {
     // Caculate total price based on submitted values.
     $emptyArray = [];
     CRM_Price_BAO_PriceSet::processAmount($amounts, $submitValues, $emptyArray);
@@ -70,8 +70,8 @@ class CRM_Discountaddlreg_Util {
         $minPerson = CRM_Utils_Array::value('min_person', $priceFieldDiscount, 0);
         $maxPerson = $minPerson + CRM_Utils_Array::value('max_persons', $priceFieldDiscount, 0) - 1;
         if (
-          $participantPositionId >= $minPerson
-          && $participantPositionId <= $maxPerson
+          $countedParticipantPositionId >= $minPerson
+          && $countedParticipantPositionId <= $maxPerson
         ) {
           $maxDiscountEach = CRM_Utils_Array::value('max_discount_each', $priceFieldDiscount, 0);
           if (($undiscountedAmount - $maxDiscountEach) >= 0) {
@@ -139,4 +139,25 @@ class CRM_Discountaddlreg_Util {
     }
   }
 
+  static function adjustCountedParticipantPosition($participantPositionId, $primaryParticipantParams, $eventId) {
+    // Start with the actual position.
+    $countedParticipantPositionId = $participantPositionId;
+    // Determine if primary is attending; start by checking the params.
+    $isRegisteringSelf = $primaryParticipantParams['isRegisteringSelf'] ?? NULL;
+    // If it's not in the params, and if groupreg is even installed, then it's determined
+    // on a per-event basis from event config. Get it from there.
+    if ($isRegisteringSelf === NULL && method_exists('CRM_Groupreg_Util', 'getEventSettings')) {
+      $groupregEventSettings = CRM_Groupreg_Util::getEventSettings($eventId);
+
+      $isPrimaryAttending = $groupregEventSettings['is_primary_attending'] ?? CRM_Groupreg_Util::primaryIsAteendeeYes;
+      if ($isPrimaryAttending == CRM_Groupreg_Util::primaryIsAteendeeYes) {
+        $isRegisteringSelf = 1;
+      }
+    }
+    // If primary is not attending, decrement the counted position.
+    if (!$isRegisteringSelf) {
+      $countedParticipantPositionId--;
+    }
+    return $countedParticipantPositionId;
+  }
 }

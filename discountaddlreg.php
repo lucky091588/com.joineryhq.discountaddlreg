@@ -236,7 +236,10 @@ function discountaddlreg_civicrm_buildAmount($pageType, &$form, &$amounts) {
       // otherwise, values are in $params[0].
       $primaryParticipantParams = ($params[0] ?? $submitValues);
       $selectedDiscounts = CRM_Discountaddlreg_Util::getSelectedDiscounts($availableDiscounts, $primaryParticipantParams);
-      $participantDiscounts = CRM_Discountaddlreg_Util::calculateParticipantDiscounts($amounts, $selectedDiscounts, $submitValues, $participantPositionId);
+      // Adjust $participantPositionId based on whether or not the primary registrant is attending
+      // (which is an option provided by the extension com.joineryhq.groupreg).
+      $countedParticipantPositionId = CRM_Discountaddlreg_Util::adjustCountedParticipantPosition($participantPositionId, $primaryParticipantParams, $form->getVar('_eventId'));
+      $participantDiscounts = CRM_Discountaddlreg_Util::calculateParticipantDiscounts($amounts, $selectedDiscounts, $submitValues, $countedParticipantPositionId);
       foreach ($participantDiscounts as $discountFieldId => $participantDiscount) {
         // If any discount is to be applied, add the value of the 'discount price field'
         // to reflect that amount in the negative.
