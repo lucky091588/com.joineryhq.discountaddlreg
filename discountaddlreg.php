@@ -231,7 +231,11 @@ function discountaddlreg_civicrm_buildAmount($pageType, &$form, &$amounts) {
       CRM_Discountaddlreg_Util::stripSubmittedDiscountFieldValues($amounts, $submitValues);
       // Determine which discounts are available and selected, and their discount value.
       $availableDiscounts = CRM_Discountaddlreg_Util::getAvailableDiscountConfig($amounts);
-      $selectedDiscounts = CRM_Discountaddlreg_Util::getSelectedDiscounts($availableDiscounts, $params[0]);
+      // Shorthand for primary registrant submitted values. If we're submitting an
+      // primary registrant, $params[0] will be null and values are in $submitValues;
+      // otherwise, values are in $params[0].
+      $primaryParticipantParams = ($params[0] ?? $submitValues);
+      $selectedDiscounts = CRM_Discountaddlreg_Util::getSelectedDiscounts($availableDiscounts, $primaryParticipantParams);
       $participantDiscounts = CRM_Discountaddlreg_Util::calculateParticipantDiscounts($amounts, $selectedDiscounts, $submitValues, $participantPositionId);
       foreach ($participantDiscounts as $discountFieldId => $participantDiscount) {
         // If any discount is to be applied, add the value of the 'discount price field'
