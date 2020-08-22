@@ -139,7 +139,7 @@ class CRM_Discountaddlreg_Util {
     }
   }
 
-  static function adjustCountedParticipantPosition($participantPositionId, $primaryParticipantParams, $eventId) {
+  public static function adjustCountedParticipantPosition($participantPositionId, $primaryParticipantParams, $eventId) {
     // Start with the actual position.
     $countedParticipantPositionId = $participantPositionId;
     // Determine if primary is attending; start by checking the params.
@@ -160,4 +160,5 @@ class CRM_Discountaddlreg_Util {
     }
     return $countedParticipantPositionId;
   }
+
 }
